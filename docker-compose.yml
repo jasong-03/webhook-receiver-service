@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  webhook-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webhook-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_TYPE=sqlite
+      - DB_DATABASE=/app/data/webhooks.db
+      - API_KEY=${API_KEY:-dev-api-key-12345}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-dev-webhook-secret-67890}
+      - THROTTLE_TTL=60000
+      - THROTTLE_LIMIT=100
+      - MAX_PAYLOAD_SIZE=1mb
+    volumes:
+      - webhook-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Optional: PostgreSQL for production use
+  # Uncomment and configure to use PostgreSQL instead of SQLite
+  #
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: webhook-postgres
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=webhooks
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # webhook-service:
+  #   # ... same as above, but with these environment changes:
+  #   environment:
+  #     - DB_TYPE=postgres
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_USERNAME=postgres
+  #     - DB_PASSWORD=postgres
+  #     - DB_DATABASE=webhooks
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+volumes:
+  webhook-data:
+    driver: local
+  # postgres-data:
+  #   driver: local
